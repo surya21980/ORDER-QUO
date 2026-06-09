@@ -1,0 +1,7 @@
+streamlit
+pandas
+gspread
+oauth2client
+requests
+google-genai
+streamlit-paste-button
