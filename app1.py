@@ -24,7 +24,7 @@ def main():
     except Exception as e:
         st.error(f"Error Loading Data: {e}"); return
 
-    # --- NAVIGASI TAB ---
+    # --- NAVIGASI MODUL ---
     tab_list = ["🛒 Penawaran (Sales)", "📊 Manajemen (Direksi)", "📸 Cari dari Gambar"]
     selected_tab = st.sidebar.radio("Pilih Modul:", tab_list)
 
@@ -60,15 +60,11 @@ def main():
         
         if not st.session_state.logged_in_db:
             password = st.text_input("Masukkan Password Direksi:", type="password", key="pass_input")
-            if password == "Admin123": 
-                st.session_state.logged_in_db = True
-                st.rerun()
+            if password == "Admin123": st.session_state.logged_in_db = True; st.rerun()
             elif password: st.error("Password Salah!")
         
         if st.session_state.logged_in_db:
-            if st.button("Logout"):
-                st.session_state.logged_in_db = False
-                st.rerun()
+            if st.button("Logout"): st.session_state.logged_in_db = False; st.rerun()
             
             search_dir = st.text_input("🔍 Cari data internal (PN/Keterangan/Supplier) [(,) (;) untuk banyak]:", key="s_dir")
             df_dir = df[['PART NUMBER', 'KETERANGAN', 'MEREK', 'HARGA', 'MODAL', 'SUPPLIER', 'ALTER']]
@@ -76,9 +72,16 @@ def main():
             if search_dir:
                 queries = [q.strip() for q in re.split(r'[;,]', search_dir) if q.strip()]
                 filtered_dir = df_dir[df_dir.apply(lambda row: any(any(str(q).lower() in str(cell).lower() for q in queries) for cell in row), axis=1)]
-                st.dataframe(filtered_dir, use_container_width=True, hide_index=True)
-            else:
-                st.dataframe(df_dir, use_container_width=True, hide_index=True)
+                if not filtered_dir.empty: st.dataframe(filtered_dir, use_container_width=True, hide_index=True)
+                else: st.warning("Data tidak ditemukan.")
+                
+                not_found = [q for q in queries if not df.apply(lambda row: row.astype(str).str.contains(q, case=False).any(), axis=1).any()]
+                if not_found:
+                    st.error(f"Peringatan: Item tidak ditemukan: **{', '.join(not_found)}**")
+                    try:
+                        requests.get(f"https://api.telegram.org/bot{st.secrets['TELEGRAM_TOKEN']}/sendMessage?chat_id={st.secrets['TELEGRAM_CHAT_ID']}&text=⚠️ Direksi mencari: {', '.join(not_found)}")
+                    except: pass
+            else: st.dataframe(df_dir, use_container_width=True, hide_index=True)
 
     # --- TAB 3: CARI DARI GAMBAR ---
     elif selected_tab == "📸 Cari dari Gambar":
