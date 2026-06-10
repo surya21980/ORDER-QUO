@@ -26,7 +26,6 @@ def main():
 
     # --- NAVIGASI TAB ---
     tab_list = ["🛒 Penawaran (Sales)", "📊 Manajemen (Direksi)", "📸 Cari dari Gambar"]
-    # Gunakan radio sebagai pengganti tabs agar bisa dikontrol dengan tombol
     selected_tab = st.sidebar.radio("Pilih Modul:", tab_list)
 
     # --- TAB 1: AREA SALES ---
@@ -58,13 +57,28 @@ def main():
     elif selected_tab == "📊 Manajemen (Direksi)":
         st.subheader("📊 Area Manajemen Direksi")
         if 'logged_in_db' not in st.session_state: st.session_state.logged_in_db = False
+        
         if not st.session_state.logged_in_db:
-            if st.text_input("Password:", type="password") == "Admin123": st.session_state.logged_in_db = True; st.rerun()
-        else:
-            if st.button("Logout"): st.session_state.logged_in_db = False; st.rerun()
-            search_dir = st.text_input("🔍 Cari data internal:")
+            password = st.text_input("Masukkan Password Direksi:", type="password", key="pass_input")
+            if password == "Admin123": 
+                st.session_state.logged_in_db = True
+                st.rerun()
+            elif password: st.error("Password Salah!")
+        
+        if st.session_state.logged_in_db:
+            if st.button("Logout"):
+                st.session_state.logged_in_db = False
+                st.rerun()
+            
+            search_dir = st.text_input("🔍 Cari data internal (PN/Keterangan/Supplier) [(,) (;) untuk banyak]:", key="s_dir")
             df_dir = df[['PART NUMBER', 'KETERANGAN', 'MEREK', 'HARGA', 'MODAL', 'SUPPLIER', 'ALTER']]
-            st.dataframe(df_dir if not search_dir else df_dir[df_dir.apply(lambda row: row.astype(str).str.contains(search_dir, case=False).any(), axis=1)], use_container_width=True, hide_index=True)
+            
+            if search_dir:
+                queries = [q.strip() for q in re.split(r'[;,]', search_dir) if q.strip()]
+                filtered_dir = df_dir[df_dir.apply(lambda row: any(any(str(q).lower() in str(cell).lower() for q in queries) for cell in row), axis=1)]
+                st.dataframe(filtered_dir, use_container_width=True, hide_index=True)
+            else:
+                st.dataframe(df_dir, use_container_width=True, hide_index=True)
 
     # --- TAB 3: CARI DARI GAMBAR ---
     elif selected_tab == "📸 Cari dari Gambar":
